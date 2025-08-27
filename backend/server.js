@@ -10,7 +10,10 @@ let db; // referencia global
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors())
+app.use(cors({
+  origin: ["https://jordimarti.netlify.app/"]
+}));
+
 app.use(express.json());
 
 async function initDb() {
@@ -50,3 +53,20 @@ app.post('/enviar', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`Servidor escuchando en http://localhost:${PORT}`);
 });
+
+app.get('/mensajes', async (req, res) => {
+    const auth = req.headers.authorization;
+    const user = process.env.ADMIN_USER;
+    const pass = process.env.ADMIN_PASS;
+
+    if (!auth || auth !== `Basic ${Buffer.from(`${user}:${pass}`).toString('base64')}`) {
+        return res.status(401).send("No autorizado");
+    }
+
+    try {
+        const mensajes = await db.all('SELECT * FROM mensajes');
+        res.json(mensajes);
+    } catch (error) {
+        res.status(500).json({ ok: false, error: 'Error al obtener los mensajes' });
+    }
+})
