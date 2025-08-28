@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
-import { openDb } from './database.js';
+import { openDb } from './databaselLocal.js';
+import pool from './database.js';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -11,7 +12,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors({
-  origin: ["https://jordimarti.netlify.app"]
+  origin: [
+    "https://jordimarti.netlify.app",
+    "http://localhost:5500"
+  ]
 }));
 
 app.use(express.json());
@@ -35,16 +39,13 @@ initDb().catch(err => {
 
 app.post('/enviar', async (req, res) => {
     try {
-    if (!db) return res.status(503).json({ ok: false, error: 'BD no inicializada aún' });
-        const { nombre, apellido, email, mensaje } = req.body;
+    const {nombre, apellido, email, mensaje} = req.body;
+    
+    const result = await pool.query("INSERT INTO mensajes (nombre, apellido, email, mensaje) VALUES ($1,$2,$3,$4) RETURNING *",
+        [nombre, apellido, email, mensaje]
+    )
 
-        await db.run(
-            'INSERT INTO mensajes (nombre, apellido, email, mensaje) VALUES (?, ?, ?, ?)',
-            [nombre, apellido, email, mensaje]
-        );
-
-        console.log("formulario recibido");
-        res.json({ ok: true });
+    res.status(201).json({success:true, data: result.rows[0]});
     } catch (error) {
         res.status(500).json({ ok: false, error: 'Error al guardar el mensaje' });
     }
@@ -59,14 +60,21 @@ app.get('/mensajes', async (req, res) => {
     const user = process.env.ADMIN_USER;
     const pass = process.env.ADMIN_PASS;
 
-    if (!auth || auth !== `Basic ${Buffer.from(`${user}:${pass}`).toString('base64')}`) {
+    if (!auth) {
+        return res.status(401).send("No autorizado");
+    }
+
+    // auth = "Basic <base64>"
+    const [scheme, encoded] = auth.split(' ');
+    if (scheme !== 'Basic' || encoded !== Buffer.from(`${user}:${pass}`).toString('base64')) {
         return res.status(401).send("No autorizado");
     }
 
     try {
-        const mensajes = await db.all('SELECT * FROM mensajes');
-        res.json(mensajes);
+        const mensajes = await pool.query("SELECT * FROM mensajes ORDER BY fecha DESC");
+        res.json(mensajes.rows);
     } catch (error) {
+        console.error(error);
         res.status(500).json({ ok: false, error: 'Error al obtener los mensajes' });
     }
-})
+});

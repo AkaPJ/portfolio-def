@@ -24,7 +24,7 @@ export function validarForm() {
         const data = {nombre, apellido, email, mensaje}
 
         try {
-            const res = await fetch('https://portfolio-def.onrender.com/enviar', {
+            const res = await fetch('http://localhost:3000/enviar', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

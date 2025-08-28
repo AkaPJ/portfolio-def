@@ -1,12 +1,14 @@
-import sqlite from 'sqlite3'
-import { open } from 'sqlite'
-import dotenv from 'dotenv'
+import pkg from 'pg'
+const { Pool } = pkg
+import dotenv from 'dotenv';
 
-dotenv.config()
+dotenv.config();
 
-export async function openDb() {
-    return open({
-        filename: process.env.DB_FILE,
-        driver: sqlite.Database
-    })
-}
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false
+    }
+})
+
+export default pool;
